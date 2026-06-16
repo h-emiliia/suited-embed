@@ -1,13 +1,16 @@
-# Suited — "Signal" scroll animation (Webflow embed)
+# Suited — "Signal" scroll animation: Webflow embed handoff
 
-A scroll-scrubbed Chladni particle animation with 3 morphing states. One JS file
-([embed.js](embed.js)) plus a small DOM structure built in Webflow. All text stays as
-native, editable Webflow elements — the script only injects a transparent `<canvas>`,
-scrubs the morph on scroll, toggles an `is-active` class on the current label, and
-crossfades the descriptions.
+A scroll-scrubbed Chladni particle animation with 3 morphing states ("Firm / Industry /
+Individual signal"). It's **one JS file** plus a small DOM structure built in Webflow.
+All text stays as **native, editable Webflow elements** — the script only injects a
+transparent `<canvas>`, scrubs the morph on scroll, toggles an `is-active` class on the
+current label, and crossfades the descriptions.
 
-- **Live reference:** https://suited-signal.vercel.app
-- **Minimal markup (View Source):** [example.html](example.html)
+## Everything you need
+- **Embed kit (code + this doc):** https://github.com/h-emiliia/suited-embed
+- **Live reference (target behaviour):** https://suited-signal.vercel.app
+- **Script (CDN, production-ready):**
+  `https://cdn.jsdelivr.net/gh/h-emiliia/suited-embed@v1/embed.js`
 
 ## Add the script
 
@@ -17,9 +20,8 @@ In Webflow → **Page Settings → Custom Code → Before `</body>`**:
 <script src="https://cdn.jsdelivr.net/gh/h-emiliia/suited-embed@v1/embed.js" defer></script>
 ```
 
-> Pinned to `@v1` (a git tag) so the CDN URL is stable and cache-safe. To ship changes,
-> push a new tag (`v2`, …) and bump the URL. `@latest` or `@main` also work but can cache
-> for up to 24h.
+> Pinned to `@v1` (a git tag) so the URL is stable and cache-safe. Changes ship by pushing
+> a new tag and bumping the number.
 
 ## 1. Structure to build in the Designer
 
@@ -39,29 +41,39 @@ Section / Div                       data-chladni = wrapper      (DO NOT set a he
 
 - Custom attributes: **Element Settings → Custom attributes**.
 - Labels and descriptions are matched **by order**. Add a label+desc pair to add a section.
+- The description copy above is placeholder — swap for final copy any time.
 
 ## 2. Required styles
 
 - **wrapper** — `position: relative`; **do not set a height** (the script sets it to
-  `100vh + 100vh` per extra section).
+  `100vh + 100vh` per extra section = 300vh here).
 - **hero** — `position: sticky; top: 0; height: 100vh; overflow: hidden`.
-- **canvas mount** — `position: absolute`, centered. Script creates + sizes the `<canvas>`.
+- **canvas mount** — `position: absolute`, centered. The script creates + sizes the `<canvas>`.
 - **descriptions** — stack them: container `position: relative` + fixed/min height, each
   desc `position: absolute`. The script crossfades opacity; it does not lay them out.
-- **is-active** — script adds class `is-active` to the active label; style it (white text,
-  show arrow) with `transition: color .4s`.
+- **is-active** — the script adds class `is-active` to the active label; style it (white
+  text, show the arrow) with `transition: color .4s` for a soft swap.
 
 ## 3. Mobile
 
-On the Mobile breakpoint, stack: labels `top: 11vh` centered, descriptions `bottom: 11vh`
-centered (`min-height: ~84px`, keep each desc `position: absolute`). See [example.html](example.html).
+On the Mobile breakpoint, stack vertically — **labels centered above**, **descriptions
+centered below**:
+- labels: `top: 11vh`, full width, `text-align: center`, no transform.
+- descriptions: `bottom: 11vh`, full width, centered, `min-height: ~84px` (keep each desc
+  `position: absolute` so the crossfade still works).
+- optionally shrink the canvas a touch.
 
-## Notes
+These are breakpoint overrides of the desktop positioning — no code needed.
+`example.html` in the repo demonstrates the exact rules.
 
-- **Transparent canvas** — set the section background (dark) yourself; the plate has a soft
-  radial edge fade and blends into any color.
-- **Patterns** are read from `data-m/n/a/b` — change a section by editing attributes only.
-- **Particle look / scroll feel / color** live in the `SIM` / `SCROLL` config at the top of
-  `embed.js` (particle colour is `rgba(190,190,184)`). Edit + push a new tag to change.
-- **Reduced motion** — morph snaps between states instead of scrubbing.
+## 4. Notes / gotchas
+
+- **Transparent canvas** — set the section's background (dark) yourself; the plate has a
+  soft radial edge fade and blends into any color.
+- **Patterns** are read only from `data-m/n/a/b` — retune a section by editing attributes.
+- **Particle look / scroll feel / colour** live in the `SIM` / `SCROLL` config at the top
+  of `embed.js` (particle colour is `rgba(190,190,184)`). Changing these means editing
+  `embed.js` and pushing a new tag.
+- **Reduced motion** — with `prefers-reduced-motion: reduce`, the morph snaps between
+  states instead of scrubbing.
 - The script is inert if the `data-chladni` elements are absent, so it's safe site-wide.
