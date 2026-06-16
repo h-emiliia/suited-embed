@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<!-- Minimal stand-in for the Webflow Designer structure described in README.md.
+     Styles here approximate what you'd set in the Designer. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chladni embed — Webflow structure example</title>
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    background: #0b0b0a;
+    color: #f2f2ef;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+
+  /* wrapper: height is set by the script */
+  .hero {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .canvas-mount {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    line-height: 0;
+  }
+  .labels {
+    position: absolute;
+    left: 48px; top: 50%;
+    transform: translateY(-50%);
+  }
+  .label {
+    font-size: 42px;
+    line-height: 1.45;
+    color: #6e6e69;
+    transition: color 0.4s ease;
+    white-space: nowrap;
+  }
+  .label.is-active { color: #f2f2ef; }
+  .descs {
+    position: absolute;
+    right: 48px; top: 50%;
+    transform: translateY(-50%);
+    width: 360px;
+  }
+  .desc {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 19px;
+    line-height: 1.5;
+    opacity: 0;
+  }
+  .after {
+    min-height: 60vh;
+    display: grid;
+    place-items: center;
+    color: #6e6e69;
+  }
+
+  /* ── Mobile: stack — labels centered above the canvas, descriptions
+     centered below. In Webflow, set these same overrides on the
+     Mobile breakpoint instead of writing CSS. ─────────────────────── */
+  @media (max-width: 768px) {
+    .labels {
+      left: 0; right: 0;
+      top: 11vh;
+      transform: none;
+      text-align: center;
+    }
+    .label { font-size: 26px; line-height: 1.3; white-space: normal; }
+
+    .descs {
+      left: 24px; right: 24px;
+      width: auto;
+      top: auto;
+      bottom: 11vh;
+      transform: none;
+      text-align: center;
+      min-height: 84px;
+    }
+    .desc { top: 0; transform: none; font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div data-chladni="wrapper">
+  <div class="hero">
+    <div class="canvas-mount" data-chladni="canvas"></div>
+    <div class="labels">
+      <div class="label" data-chladni="label" data-m="6.5" data-n="9" data-a="-1.2" data-b="1.7">Firm signal</div>
+      <div class="label" data-chladni="label" data-m="6.1" data-n="4" data-a="-2" data-b="0.45">Industry signal</div>
+      <div class="label" data-chladni="label" data-m="4.9" data-n="8.1" data-a="-1.85" data-b="-2">Individual signal</div>
+    </div>
+    <div class="descs">
+      <div class="desc" data-chladni="desc">What the leading firms are doing — hiring, strategy, and the moves that define the market.</div>
+      <div class="desc" data-chladni="desc">How professionals succeed across law and finance.</div>
+      <div class="desc" data-chladni="desc">Your own trajectory — benchmarked, contextualized, and ready to act on.</div>
+    </div>
+  </div>
+</div>
+
+<section class="after">↑ pinned hero ends here</section>
+
+<script src="embed.js" defer></script>
+</body>
+</html>
