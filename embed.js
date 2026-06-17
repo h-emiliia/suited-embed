@@ -152,6 +152,7 @@
       end: function () { return "+=" + (window.innerHeight * (N - 1) * SCROLL.perSection); },
       pin: hero,
       pinSpacing: true,
+      pinType: "transform", // required inside ScrollSmoother (transformed scroller)
       anticipatePin: 1,
       invalidateOnRefresh: true,
       onUpdate: function (self) { progress = self.progress; },
