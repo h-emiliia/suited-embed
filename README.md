@@ -10,7 +10,7 @@ current label, and crossfades the descriptions.
 - **Embed kit (code + this doc):** https://github.com/h-emiliia/suited-embed
 - **Live reference (target behaviour):** https://suited-signal.vercel.app
 - **Script (CDN, production-ready):**
-  `https://cdn.jsdelivr.net/gh/h-emiliia/suited-embed@v1/embed.js`
+  `https://cdn.jsdelivr.net/gh/h-emiliia/suited-embed@v2/embed.js`
 
 ## Add the script
 
@@ -20,7 +20,7 @@ In Webflow → **Page Settings → Custom Code → Before `</body>`**:
 <script src="https://cdn.jsdelivr.net/gh/h-emiliia/suited-embed@v1/embed.js" defer></script>
 ```
 
-> Pinned to `@v1` (a git tag) so the URL is stable and cache-safe. Changes ship by pushing
+> Pinned to `@v2` (a git tag) so the URL is stable and cache-safe. Changes ship by pushing
 > a new tag and bumping the number.
 
 ## 1. Structure to build in the Designer
@@ -76,4 +76,8 @@ These are breakpoint overrides of the desktop positioning — no code needed.
   `embed.js` and pushing a new tag.
 - **Reduced motion** — with `prefers-reduced-motion: reduce`, the morph snaps between
   states instead of scrubbing.
+- **GSAP ScrollSmoother** — if the site uses GSAP (ScrollSmoother/ScrollTrigger), the
+  script auto-detects it and pins the hero via **ScrollTrigger** instead of CSS sticky
+  (CSS sticky can't work inside ScrollSmoother's transformed scroller). No setup needed —
+  just make sure GSAP loads before this script. On non-GSAP sites it uses native sticky.
 - The script is inert if the `data-chladni` elements are absent, so it's safe site-wide.
