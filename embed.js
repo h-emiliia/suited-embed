@@ -160,16 +160,21 @@
     ST.refresh();
   }
 
-  // GSAP libraries load in <head>, so window.gsap is defined by the time this
-  // deferred script runs. ScrollSmoother is usually created on the host's
-  // DOMContentLoaded (after this script) — so wait for `load` before pinning,
-  // ensuring ScrollTrigger binds to the smoothed scroller.
-  if (window.gsap && window.ScrollTrigger) {
-    if (document.readyState === "complete") setupGsap(window.gsap, window.ScrollTrigger);
-    else addEventListener("load", function () { setupGsap(window.gsap, window.ScrollTrigger); });
-  } else {
-    setupNative();
+  // Default to plain CSS sticky. Only switch to ScrollTrigger pinning if a
+  // ScrollSmoother instance is ACTUALLY running — its transform is what breaks
+  // sticky. (Merely loading the GSAP libraries is not enough; the previous
+  // version wrongly pinned whenever gsap was present.) Decide at `load`, after
+  // the host's DOMContentLoaded code has had a chance to create the smoother.
+  function startEngine() {
+    var smoother = window.ScrollSmoother && window.ScrollSmoother.get && window.ScrollSmoother.get();
+    if (smoother && window.gsap && window.ScrollTrigger) {
+      setupGsap(window.gsap, window.ScrollTrigger);
+    } else {
+      setupNative();
+    }
   }
+  if (document.readyState === "complete") startEngine();
+  else addEventListener("load", startEngine);
 
   function currentProgress() {
     if (engineMode === "gsap") return progress;
