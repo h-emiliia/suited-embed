@@ -30,6 +30,8 @@
     trailFade:  0.38,
     canvasFrac: 0.86,
     maskFade:   0.35,
+    maxRes:     720,   // cap the canvas backing resolution (px) — bounds per-frame cost
+    minParticles: 6000, // floor for the adaptive quality throttle
   };
 
   /* Scroll behaviour */
@@ -71,15 +73,18 @@
   var view = { size: 0, dpr: 1 };
 
   function sizeCanvas() {
-    // cap DPR at 1.5 — halves the per-frame fill cost on Retina with no
-    // meaningful visual loss for a soft particle field.
-    view.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-    view.size = Math.round(Math.min(innerWidth, innerHeight) * SIM.canvasFrac);
-    canvas.width = view.size * view.dpr;
-    canvas.height = view.size * view.dpr;
-    canvas.style.width = view.size + "px";
-    canvas.style.height = view.size + "px";
-    ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+    // Displayed size follows the viewport; the internal (backing) resolution is
+    // capped at SIM.maxRes. The dominant per-frame cost is clearing + filling
+    // this many pixels, so capping keeps the work bounded and consistent across
+    // screens. A soft particle field upscales cleanly, so this is near-invisible.
+    var display = Math.round(Math.min(innerWidth, innerHeight) * SIM.canvasFrac);
+    var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    view.size = Math.min(Math.round(display * dpr), SIM.maxRes);
+    canvas.width = view.size;
+    canvas.height = view.size;
+    canvas.style.width = display + "px";
+    canvas.style.height = display + "px";
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
   /* Smoothstep-eased radial fade so the plate dissolves into the page. */
@@ -231,15 +236,32 @@
 
   /* ── Main loop ─────────────────────────────────────────── */
   var frameCount = 0;
+  var active = SIM.particles;       // particles actually simulated/drawn
+  var now = (window.performance || Date);
+  var fpsLast = now.now(), fpsAccum = 0, fpsSamples = 0;
+
   function frame() {
-    if (!visible) { requestAnimationFrame(frame); return; }
+    if (!visible) { fpsLast = now.now(); requestAnimationFrame(frame); return; }
+
+    // Adaptive quality: if sustained frame time is high (contended/slow load),
+    // shed particles so it self-heals to a smooth rate instead of staying janky
+    // until a manual reload. Pauses (dt > 100ms) are ignored.
+    var t = now.now(), dt = t - fpsLast; fpsLast = t;
+    if (dt > 0 && dt < 100) { fpsAccum += dt; fpsSamples++; }
+    if (fpsSamples >= 50) {
+      var avg = fpsAccum / fpsSamples; fpsAccum = 0; fpsSamples = 0;
+      if (avg > 26 && active > SIM.minParticles) {
+        active = Math.max(SIM.minParticles, Math.floor(active * 0.8));
+      }
+    }
+
     var target = scrollTargetQ();
     q = REDUCED ? target : q + (target - q) * SCROLL.smoothing;
 
     var p = patternAt(q);
     var settle = REDUCED ? 3 : 1;
 
-    for (var i = 0; i < SIM.particles; i++) {
+    for (var i = 0; i < active; i++) {
       if (Math.random() < SIM.respawn) {
         px[i] = Math.random();
         py[i] = Math.random();
@@ -272,7 +294,7 @@
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = "rgba(" + SIM.dotColor + ", " + SIM.dotOpacity + ")";
     var s = SIM.dotSize;
-    for (var j = 0; j < SIM.particles; j++) {
+    for (var j = 0; j < active; j++) {
       ctx.fillRect(px[j] * view.size, py[j] * view.size, s, s);
     }
 
