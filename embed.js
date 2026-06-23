@@ -171,6 +171,8 @@
   var progress = 0;
   var engineMode = "";
   var scrollTriggerInstance = null;
+  var scrollTriggerApi = null;
+  var smootherInstance = null;
   var gsapRefreshQueued = false;
 
   function sizeWrapper() {
@@ -187,6 +189,7 @@
 
   function setupGsap(gsap, ST) {
     engineMode = "gsap";
+    scrollTriggerApi = ST;
     gsap.registerPlugin(ST);
     hero.style.position = "relative"; // ScrollTrigger does the pinning, not CSS sticky
     wrapper.style.height = "";          // pin spacing creates the scroll distance
@@ -215,6 +218,7 @@
   function startEngine() {
     var smoother = window.ScrollSmoother && window.ScrollSmoother.get && window.ScrollSmoother.get();
     if (smoother && window.gsap && window.ScrollTrigger) {
+      smootherInstance = smoother;
       setupGsap(window.gsap, window.ScrollTrigger);
     } else {
       setupNative();
@@ -379,14 +383,20 @@
       if (scrollTriggerInstance && scrollTriggerInstance.refresh) scrollTriggerInstance.refresh();
       else window.ScrollTrigger.refresh();
     }
+    if (engineMode === "gsap" && scrollTriggerApi) {
+      scheduleGsapRefresh(scrollTriggerApi, 0);
+    }
   }
 
   function scheduleGsapRefresh(ST, delay) {
     if (!ST) return;
     setTimeout(function () {
       afterFrames(2).then(function () {
-        var smoother = window.ScrollSmoother && window.ScrollSmoother.get && window.ScrollSmoother.get();
-        if (smoother && smoother.refresh) smoother.refresh();
+        if (smootherInstance && smootherInstance.refresh) smootherInstance.refresh();
+        else {
+          var smoother = window.ScrollSmoother && window.ScrollSmoother.get && window.ScrollSmoother.get();
+          if (smoother && smoother.refresh) smoother.refresh();
+        }
         if (scrollTriggerInstance && scrollTriggerInstance.refresh) scrollTriggerInstance.refresh();
         ST.refresh(true);
       });
@@ -394,9 +404,9 @@
   }
 
   function refreshGsapOnFirstScroll() {
-    if (engineMode !== "gsap" || gsapRefreshQueued || !window.ScrollTrigger) return;
+    if (engineMode !== "gsap" || gsapRefreshQueued || !scrollTriggerApi) return;
     gsapRefreshQueued = true;
-    scheduleGsapRefresh(window.ScrollTrigger, 80);
+    scheduleGsapRefresh(scrollTriggerApi, 80);
     removeEventListener("scroll", refreshGsapOnFirstScroll);
     if (window.visualViewport && window.visualViewport.removeEventListener) {
       window.visualViewport.removeEventListener("scroll", refreshGsapOnFirstScroll);
