@@ -1,7 +1,7 @@
 /* ─────────────────────────────────────────────────────────
  * SUITED — scroll-scrubbed Chladni morph (Webflow embed)
  *
- * v11 — stable first-load sizing for Webflow + GSAP ScrollSmoother sites.
+ * v12 — stable first-load sizing for Webflow + GSAP ScrollSmoother sites.
  *   • If GSAP + ScrollTrigger are present, the hero is pinned and the
  *     morph is driven by a ScrollTrigger (the only reliable way inside
  *     ScrollSmoother, which transforms the page and breaks CSS sticky).
@@ -225,6 +225,30 @@
     }
   }
 
+  function currentNativeScrollTop() {
+    if (typeof window.pageYOffset === "number") return window.pageYOffset;
+    if (typeof window.scrollY === "number") return window.scrollY;
+    return (document.documentElement && document.documentElement.scrollTop) ||
+      (document.body && document.body.scrollTop) ||
+      0;
+  }
+
+  function currentSmoother() {
+    if (smootherInstance) return smootherInstance;
+    var smoother = window.ScrollSmoother && window.ScrollSmoother.get && window.ScrollSmoother.get();
+    if (smoother) smootherInstance = smoother;
+    return smootherInstance;
+  }
+
+  function syncSmootherToNativeScroll() {
+    var smoother = currentSmoother();
+    if (!smoother) return;
+    var y = currentNativeScrollTop();
+    if (smoother.scrollTo) smoother.scrollTo(y, false);
+    else if (smoother.scrollTop) smoother.scrollTop(y);
+    if (smoother.refresh) smoother.refresh();
+  }
+
   function currentProgress() {
     if (engineMode === "gsap") return progress;
     var rect = wrapper.getBoundingClientRect();
@@ -406,6 +430,7 @@
   function refreshGsapOnFirstScroll() {
     if (engineMode !== "gsap" || gsapRefreshQueued || !scrollTriggerApi) return;
     gsapRefreshQueued = true;
+    syncSmootherToNativeScroll();
     scheduleGsapRefresh(scrollTriggerApi, 80);
     removeEventListener("scroll", refreshGsapOnFirstScroll);
     if (window.visualViewport && window.visualViewport.removeEventListener) {

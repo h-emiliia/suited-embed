@@ -26,7 +26,7 @@ function createElement(name, attrs = {}) {
   };
 }
 
-function createHarness() {
+function createHarness(options = {}) {
   let resolveFonts;
   const fontReady = new Promise((resolve) => {
     resolveFonts = resolve;
@@ -80,6 +80,9 @@ function createHarness() {
       listeners[type] = listeners[type] || [];
       listeners[type].push(handler);
     },
+    removeEventListener(type, handler) {
+      listeners[type] = (listeners[type] || []).filter((entry) => entry !== handler);
+    },
     requestAnimationFrame(handler) {
       rafQueue.push(handler);
       return rafQueue.length;
@@ -92,6 +95,7 @@ function createHarness() {
     Promise,
     setTimeout,
   };
+  Object.assign(context, options.globals || {});
   context.window = context;
 
   return {
@@ -114,13 +118,14 @@ function createHarness() {
   };
 }
 
-const harness = createHarness();
 const source = fs.readFileSync(new URL("./embed.js", import.meta.url), "utf8");
-vm.runInContext(source, harness.context);
 
 async function drainMicrotasks(count = 5) {
   for (let i = 0; i < count; i++) await Promise.resolve();
 }
+
+const harness = createHarness();
+vm.runInContext(source, harness.context);
 
 assert.equal(
   harness.mount.children.length,
@@ -146,3 +151,44 @@ assert.equal(harness.wrapper.style.height, "200vh", "native mode creates the exp
 assert.equal(harness.mount.parentElement.style.position, "sticky", "native mode pins the hero with sticky positioning");
 assert.equal(harness.mount.parentElement.style.top, "0px", "native mode anchors the hero to the top of the viewport");
 assert.equal(harness.mount.parentElement.style.bottom, "auto", "native mode clears bottom anchoring that can trap the hero low");
+
+const smootherScrolls = [];
+let scrollTriggerConfig;
+const gsapHarness = createHarness({
+  globals: {
+    scrollY: 512,
+    pageYOffset: 512,
+    gsap: { registerPlugin() {} },
+    ScrollTrigger: {
+      create(config) {
+        scrollTriggerConfig = config;
+        return { refresh() {} };
+      },
+      refresh() {},
+    },
+    ScrollSmoother: {
+      get() {
+        return {
+          refresh() {},
+          scrollTo(value, smooth) {
+            smootherScrolls.push({ value, smooth });
+          },
+        };
+      },
+    },
+  },
+});
+vm.runInContext(source, gsapHarness.context);
+gsapHarness.fire("load");
+gsapHarness.resolveFonts();
+await drainMicrotasks();
+gsapHarness.flushRaf(2);
+await drainMicrotasks();
+
+assert.equal(scrollTriggerConfig.pinSpacing, false, "GSAP mode keeps wrapper height stable instead of adding pin spacing");
+gsapHarness.fire("scroll");
+assert.deepEqual(
+  smootherScrolls,
+  [{ value: 512, smooth: false }],
+  "first scroll snaps ScrollSmoother to the native scroll position before refreshing pins",
+);
