@@ -1,11 +1,13 @@
 /* ─────────────────────────────────────────────────────────
  * SUITED — scroll-scrubbed Chladni morph (Webflow embed)
  *
- * v2 — works on GSAP ScrollSmoother sites.
+ * v7 — stable first-load sizing for Webflow + GSAP ScrollSmoother sites.
  *   • If GSAP + ScrollTrigger are present, the hero is pinned and the
  *     morph is driven by a ScrollTrigger (the only reliable way inside
  *     ScrollSmoother, which transforms the page and breaks CSS sticky).
  *   • Otherwise it falls back to native position:sticky + a tall wrapper.
+ *   • Initial DOM writes wait until load, fonts, and two animation frames have
+ *     settled so Webflow can finish layout before viewport measurements run.
  *
  * Reads from the Webflow DOM:
  *   [data-chladni="wrapper"]  the section (its direct child is the pinned hero)
@@ -54,7 +56,9 @@
   var labelEls = Array.prototype.slice.call(document.querySelectorAll('[data-chladni="label"]'));
   var descEls = Array.prototype.slice.call(document.querySelectorAll('[data-chladni="desc"]'));
   if (!wrapper || !mount || labelEls.length < 2) return;
-  var hero = mount.parentElement; // the element to pin
+  var hero = (mount.closest && mount.closest(".signal-hero")) || mount.parentElement || wrapper; // the element to pin
+  var previousVisibility = wrapper.style.visibility;
+  wrapper.style.visibility = "hidden";
 
   var PATTERNS = labelEls.map(function (el) {
     return {
@@ -67,17 +71,45 @@
   var N = PATTERNS.length;
 
   /* ── Canvas ────────────────────────────────────────────── */
-  var canvas = document.createElement("canvas");
-  mount.appendChild(canvas);
-  var ctx = canvas.getContext("2d");
+  var canvas = null;
+  var ctx = null;
   var view = { size: 0, dpr: 1 };
+
+  function positiveRect(el) {
+    if (!el || !el.getBoundingClientRect) return null;
+    var rect = el.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return null;
+    return rect;
+  }
+
+  function viewportSize() {
+    var vv = window.visualViewport;
+    var doc = document.documentElement || {};
+    return {
+      width: Math.max(1, Math.round((vv && vv.width) || window.innerWidth || doc.clientWidth || 1)),
+      height: Math.max(1, Math.round((vv && vv.height) || window.innerHeight || doc.clientHeight || 1)),
+    };
+  }
+
+  function layoutBounds() {
+    var vp = viewportSize();
+    var heroRect = positiveRect(hero);
+    var mountRect = positiveRect(mount);
+    var width = (heroRect && heroRect.width) || (mountRect && mountRect.width) || vp.width;
+    var height = (heroRect && heroRect.height) || (mountRect && mountRect.height) || vp.height;
+    return {
+      width: Math.max(1, Math.min(width, vp.width)),
+      height: Math.max(1, Math.min(height, vp.height)),
+    };
+  }
 
   function sizeCanvas() {
     // Displayed size follows the viewport; the internal (backing) resolution is
     // capped at SIM.maxRes. The dominant per-frame cost is clearing + filling
     // this many pixels, so capping keeps the work bounded and consistent across
     // screens. A soft particle field upscales cleanly, so this is near-invisible.
-    var display = Math.round(Math.min(innerWidth, innerHeight) * SIM.canvasFrac);
+    var bounds = layoutBounds();
+    var display = Math.round(Math.min(bounds.width, bounds.height) * SIM.canvasFrac);
     var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     view.size = Math.min(Math.round(display * dpr), SIM.maxRes);
     canvas.width = view.size;
@@ -107,16 +139,16 @@
     canvas.style.maskImage = mask;
   }
 
-  sizeCanvas();
-  applyMask();
-  addEventListener("resize", sizeCanvas);
-
   /* ── Particles ─────────────────────────────────────────── */
-  var px = new Float32Array(SIM.particles);
-  var py = new Float32Array(SIM.particles);
-  for (var i = 0; i < SIM.particles; i++) {
-    px[i] = Math.random();
-    py[i] = Math.random();
+  var px = null;
+  var py = null;
+  function seedParticles() {
+    px = new Float32Array(SIM.particles);
+    py = new Float32Array(SIM.particles);
+    for (var i = 0; i < SIM.particles; i++) {
+      px[i] = Math.random();
+      py[i] = Math.random();
+    }
   }
 
   /* Chladni field + analytic gradient, centered cosine form. */
@@ -138,14 +170,15 @@
    * wrapper's position (native sites). */
   var progress = 0;
   var engineMode = "";
+  var scrollTriggerInstance = null;
+
+  function sizeWrapper() {
+    wrapper.style.height = (1 + (N - 1) * SCROLL.perSection) * 100 + "vh";
+  }
 
   function setupNative() {
     engineMode = "native";
-    var sizeWrapper = function () {
-      wrapper.style.height = (1 + (N - 1) * SCROLL.perSection) * 100 + "vh";
-    };
     sizeWrapper();
-    addEventListener("resize", sizeWrapper);
   }
 
   function setupGsap(gsap, ST) {
@@ -153,10 +186,10 @@
     gsap.registerPlugin(ST);
     hero.style.position = "relative"; // ScrollTrigger does the pinning, not CSS sticky
     wrapper.style.height = "";          // pin spacing creates the scroll distance
-    ST.create({
+    scrollTriggerInstance = ST.create({
       trigger: wrapper,
       start: "top top",
-      end: function () { return "+=" + (window.innerHeight * (N - 1) * SCROLL.perSection); },
+      end: function () { return "+=" + (viewportSize().height * (N - 1) * SCROLL.perSection); },
       pin: hero,
       pinSpacing: true,
       pinType: "transform", // required inside ScrollSmoother (transformed scroller)
@@ -180,13 +213,11 @@
       setupNative();
     }
   }
-  if (document.readyState === "complete") startEngine();
-  else addEventListener("load", startEngine);
 
   function currentProgress() {
     if (engineMode === "gsap") return progress;
     var rect = wrapper.getBoundingClientRect();
-    var scrollable = wrapper.offsetHeight - innerHeight;
+    var scrollable = wrapper.offsetHeight - viewportSize().height;
     return clamp(scrollable > 0 ? -rect.top / scrollable : 0, 0, 1);
   }
 
@@ -227,11 +258,13 @@
    * with the rest of the page during initial load (the usual cause of an
    * intermittently janky start) and saves CPU when it isn't being viewed. */
   var visible = true;
-  if ("IntersectionObserver" in window) {
-    visible = false;
-    new IntersectionObserver(function (entries) {
-      visible = entries[entries.length - 1].isIntersecting;
-    }, { rootMargin: "300px 0px" }).observe(wrapper);
+  function observeVisibility() {
+    if ("IntersectionObserver" in window) {
+      visible = false;
+      new IntersectionObserver(function (entries) {
+        visible = entries[entries.length - 1].isIntersecting;
+      }, { rootMargin: "300px 0px" }).observe(wrapper);
+    }
   }
 
   /* ── Main loop ─────────────────────────────────────────── */
@@ -301,5 +334,84 @@
     updateText(q);
     requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+
+  /* ── Stable Webflow boot ───────────────────────────────── */
+  var booted = false;
+  var refreshQueued = false;
+
+  function waitForLoad() {
+    if (document.readyState === "complete") return Promise.resolve();
+    return new Promise(function (resolve) {
+      addEventListener("load", resolve, { once: true });
+    });
+  }
+
+  function waitForFonts() {
+    if (!document.fonts || !document.fonts.ready) return Promise.resolve();
+    return document.fonts.ready.catch(function () {});
+  }
+
+  function afterFrames(count) {
+    return new Promise(function (resolve) {
+      function tick() {
+        count--;
+        if (count <= 0) resolve();
+        else requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  function refreshLayout() {
+    sizeCanvas();
+    if (engineMode === "native") sizeWrapper();
+    if (engineMode === "gsap" && window.ScrollTrigger) {
+      if (scrollTriggerInstance && scrollTriggerInstance.refresh) scrollTriggerInstance.refresh();
+      else window.ScrollTrigger.refresh();
+    }
+  }
+
+  function scheduleLayoutRefresh() {
+    if (!booted || refreshQueued) return;
+    refreshQueued = true;
+    afterFrames(2).then(function () {
+      refreshQueued = false;
+      refreshLayout();
+    });
+  }
+
+  function addLayoutListeners() {
+    addEventListener("resize", scheduleLayoutRefresh);
+    addEventListener("orientationchange", scheduleLayoutRefresh);
+    if (window.visualViewport && window.visualViewport.addEventListener) {
+      window.visualViewport.addEventListener("resize", scheduleLayoutRefresh);
+    }
+  }
+
+  function boot() {
+    if (booted) return;
+    booted = true;
+    canvas = document.createElement("canvas");
+    mount.appendChild(canvas);
+    ctx = canvas.getContext("2d");
+    seedParticles();
+    sizeCanvas();
+    applyMask();
+    startEngine();
+    observeVisibility();
+    addLayoutListeners();
+    q = scrollTargetQ();
+    updateText(q);
+    wrapper.style.visibility = previousVisibility;
+    requestAnimationFrame(frame);
+  }
+
+  waitForLoad()
+    .then(waitForFonts)
+    .then(function () { return afterFrames(2); })
+    .then(boot)
+    .catch(function (error) {
+      wrapper.style.visibility = previousVisibility;
+      if (window.console && window.console.error) window.console.error(error);
+    });
 })();
