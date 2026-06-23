@@ -71,7 +71,9 @@
   var view = { size: 0, dpr: 1 };
 
   function sizeCanvas() {
-    view.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // cap DPR at 1.5 — halves the per-frame fill cost on Retina with no
+    // meaningful visual loss for a soft particle field.
+    view.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     view.size = Math.round(Math.min(innerWidth, innerHeight) * SIM.canvasFrac);
     canvas.width = view.size * view.dpr;
     canvas.height = view.size * view.dpr;
@@ -214,9 +216,23 @@
     });
   }
 
+  /* ── Pause the simulation when the section is off-screen ──
+   * The heavy per-frame work (16k particles + full-canvas clear) only runs
+   * while the section is near the viewport. This keeps it from competing
+   * with the rest of the page during initial load (the usual cause of an
+   * intermittently janky start) and saves CPU when it isn't being viewed. */
+  var visible = true;
+  if ("IntersectionObserver" in window) {
+    visible = false;
+    new IntersectionObserver(function (entries) {
+      visible = entries[entries.length - 1].isIntersecting;
+    }, { rootMargin: "300px 0px" }).observe(wrapper);
+  }
+
   /* ── Main loop ─────────────────────────────────────────── */
   var frameCount = 0;
   function frame() {
+    if (!visible) { requestAnimationFrame(frame); return; }
     var target = scrollTargetQ();
     q = REDUCED ? target : q + (target - q) * SCROLL.smoothing;
 
