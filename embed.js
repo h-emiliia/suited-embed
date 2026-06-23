@@ -1,7 +1,7 @@
 /* ─────────────────────────────────────────────────────────
  * SUITED — scroll-scrubbed Chladni morph (Webflow embed)
  *
- * v10 — stable first-load sizing for Webflow + GSAP ScrollSmoother sites.
+ * v11 — stable first-load sizing for Webflow + GSAP ScrollSmoother sites.
  *   • If GSAP + ScrollTrigger are present, the hero is pinned and the
  *     morph is driven by a ScrollTrigger (the only reliable way inside
  *     ScrollSmoother, which transforms the page and breaks CSS sticky).
@@ -192,13 +192,13 @@
     scrollTriggerApi = ST;
     gsap.registerPlugin(ST);
     hero.style.position = "relative"; // ScrollTrigger does the pinning, not CSS sticky
-    wrapper.style.height = "";          // pin spacing creates the scroll distance
+    sizeWrapper();                      // keep the 300vh section height stable before pinning
     scrollTriggerInstance = ST.create({
       trigger: wrapper,
       start: "top top",
       end: function () { return "+=" + (viewportSize().height * (N - 1) * SCROLL.perSection); },
       pin: hero,
-      pinSpacing: true,
+      pinSpacing: false,
       pinType: "transform", // required inside ScrollSmoother (transformed scroller)
       anticipatePin: 1,
       invalidateOnRefresh: true,
