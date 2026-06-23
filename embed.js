@@ -1,7 +1,7 @@
 /* ─────────────────────────────────────────────────────────
  * SUITED — scroll-scrubbed Chladni morph (Webflow embed)
  *
- * v9 — stable first-load sizing for Webflow + GSAP ScrollSmoother sites.
+ * v10 — stable first-load sizing for Webflow + GSAP ScrollSmoother sites.
  *   • If GSAP + ScrollTrigger are present, the hero is pinned and the
  *     morph is driven by a ScrollTrigger (the only reliable way inside
  *     ScrollSmoother, which transforms the page and breaks CSS sticky).
@@ -171,6 +171,7 @@
   var progress = 0;
   var engineMode = "";
   var scrollTriggerInstance = null;
+  var gsapRefreshQueued = false;
 
   function sizeWrapper() {
     wrapper.style.height = (1 + (N - 1) * SCROLL.perSection) * 100 + "vh";
@@ -200,7 +201,10 @@
       invalidateOnRefresh: true,
       onUpdate: function (self) { progress = self.progress; },
     });
-    ST.refresh();
+    scheduleGsapRefresh(ST, 0);
+    scheduleGsapRefresh(ST, 120);
+    scheduleGsapRefresh(ST, 500);
+    scheduleGsapRefresh(ST, 1200);
   }
 
   // Default to plain CSS sticky. Only switch to ScrollTrigger pinning if a
@@ -377,6 +381,28 @@
     }
   }
 
+  function scheduleGsapRefresh(ST, delay) {
+    if (!ST) return;
+    setTimeout(function () {
+      afterFrames(2).then(function () {
+        var smoother = window.ScrollSmoother && window.ScrollSmoother.get && window.ScrollSmoother.get();
+        if (smoother && smoother.refresh) smoother.refresh();
+        if (scrollTriggerInstance && scrollTriggerInstance.refresh) scrollTriggerInstance.refresh();
+        ST.refresh(true);
+      });
+    }, delay || 0);
+  }
+
+  function refreshGsapOnFirstScroll() {
+    if (engineMode !== "gsap" || gsapRefreshQueued || !window.ScrollTrigger) return;
+    gsapRefreshQueued = true;
+    scheduleGsapRefresh(window.ScrollTrigger, 80);
+    removeEventListener("scroll", refreshGsapOnFirstScroll);
+    if (window.visualViewport && window.visualViewport.removeEventListener) {
+      window.visualViewport.removeEventListener("scroll", refreshGsapOnFirstScroll);
+    }
+  }
+
   function scheduleLayoutRefresh() {
     if (!booted || refreshQueued) return;
     refreshQueued = true;
@@ -389,8 +415,10 @@
   function addLayoutListeners() {
     addEventListener("resize", scheduleLayoutRefresh);
     addEventListener("orientationchange", scheduleLayoutRefresh);
+    addEventListener("scroll", refreshGsapOnFirstScroll, { passive: true });
     if (window.visualViewport && window.visualViewport.addEventListener) {
       window.visualViewport.addEventListener("resize", scheduleLayoutRefresh);
+      window.visualViewport.addEventListener("scroll", refreshGsapOnFirstScroll);
     }
   }
 
