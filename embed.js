@@ -1,7 +1,7 @@
 /* ─────────────────────────────────────────────────────────
  * SUITED — scroll-scrubbed Chladni morph (Webflow embed)
  *
- * v8 — stable first-load sizing for Webflow + GSAP ScrollSmoother sites.
+ * v9 — stable first-load sizing for Webflow + GSAP ScrollSmoother sites.
  *   • If GSAP + ScrollTrigger are present, the hero is pinned and the
  *     morph is driven by a ScrollTrigger (the only reliable way inside
  *     ScrollSmoother, which transforms the page and breaks CSS sticky).
@@ -178,6 +178,9 @@
 
   function setupNative() {
     engineMode = "native";
+    hero.style.position = "sticky";
+    hero.style.top = "0px";
+    hero.style.bottom = "auto";
     sizeWrapper();
   }
 
@@ -364,7 +367,10 @@
 
   function refreshLayout() {
     sizeCanvas();
-    if (engineMode === "native") sizeWrapper();
+    if (engineMode === "native") {
+      hero.style.height = viewportSize().height + "px";
+      sizeWrapper();
+    }
     if (engineMode === "gsap" && window.ScrollTrigger) {
       if (scrollTriggerInstance && scrollTriggerInstance.refresh) scrollTriggerInstance.refresh();
       else window.ScrollTrigger.refresh();
@@ -397,6 +403,7 @@
     seedParticles();
     sizeCanvas();
     applyMask();
+    hero.style.height = viewportSize().height + "px";
     startEngine();
     observeVisibility();
     addLayoutListeners();

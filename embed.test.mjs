@@ -142,3 +142,7 @@ await drainMicrotasks();
 assert.equal(harness.mount.children.length, 1, "the canvas is injected after stable boot");
 assert.equal(harness.mount.children[0].style.width, "860px", "canvas display width uses stable layout bounds");
 assert.ok(harness.rafQueue.length > 0, "the animation loop starts after stable boot");
+assert.equal(harness.wrapper.style.height, "200vh", "native mode creates the expected scroll distance");
+assert.equal(harness.mount.parentElement.style.position, "sticky", "native mode pins the hero with sticky positioning");
+assert.equal(harness.mount.parentElement.style.top, "0px", "native mode anchors the hero to the top of the viewport");
+assert.equal(harness.mount.parentElement.style.bottom, "auto", "native mode clears bottom anchoring that can trap the hero low");

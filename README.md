@@ -10,7 +10,7 @@ current label, and crossfades the descriptions.
 - **Embed kit (code + this doc):** https://github.com/h-emiliia/suited-embed
 - **Live reference (target behaviour):** https://suited-signal.vercel.app
 - **Script (CDN, production-ready):**
-  `https://cdn.jsdelivr.net/gh/h-emiliia/suited-embed@v8/embed.js`
+  `https://cdn.jsdelivr.net/gh/h-emiliia/suited-embed@v9/embed.js`
 
 ## Add the script
 
@@ -20,7 +20,7 @@ In Webflow → **Page Settings → Custom Code → Before `</body>`**:
 <script src="https://cdn.jsdelivr.net/gh/h-emiliia/suited-embed@v1/embed.js" defer></script>
 ```
 
-> Pinned to `@v8` (a git tag) so the URL is stable and cache-safe. Changes ship by pushing
+> Pinned to `@v9` (a git tag) so the URL is stable and cache-safe. Changes ship by pushing
 > a new tag and bumping the number.
 
 ## 1. Structure to build in the Designer
