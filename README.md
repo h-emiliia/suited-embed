@@ -76,8 +76,6 @@ These are breakpoint overrides of the desktop positioning — no code needed.
   `embed.js` and pushing a new tag.
 - **Reduced motion** — with `prefers-reduced-motion: reduce`, the morph snaps between
   states instead of scrubbing.
-- **GSAP ScrollSmoother** — if the site uses GSAP (ScrollSmoother/ScrollTrigger), the
-  script auto-detects it and pins the hero via **ScrollTrigger** instead of CSS sticky
-  (CSS sticky can't work inside ScrollSmoother's transformed scroller). No setup needed —
-  just make sure GSAP loads before this script. On non-GSAP sites it uses native sticky.
+- **Lenis** — the site uses Lenis for smooth scrolling, which works fine with CSS sticky.
+  (CSS sticky can't work inside GSAP's ScrollSmoother's transformed scroller). 
 - The script is inert if the `data-chladni` elements are absent, so it's safe site-wide.

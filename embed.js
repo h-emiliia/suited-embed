@@ -190,24 +190,17 @@
   function setupGsap(gsap, ST) {
     engineMode = "gsap";
     scrollTriggerApi = ST;
-    gsap.registerPlugin(ST);
-    hero.style.position = "relative"; // ScrollTrigger does the pinning, not CSS sticky
-    sizeWrapper();                      // keep the 300vh section height stable before pinning
+
+    sizeWrapper(); // keep the 300vh section height stable before pinning
     scrollTriggerInstance = ST.create({
       trigger: wrapper,
       start: "top top",
-      end: function () { return "+=" + (viewportSize().height * (N - 1) * SCROLL.perSection); },
-      pin: hero,
-      pinSpacing: false,
-      pinType: "transform", // required inside ScrollSmoother (transformed scroller)
-      anticipatePin: 1,
+      end: function () {
+        return "+=" + (viewportSize().height * (N - 1) * SCROLL.perSection);
+      },
       invalidateOnRefresh: true,
       onUpdate: function (self) { progress = self.progress; },
     });
-    scheduleGsapRefresh(ST, 0);
-    scheduleGsapRefresh(ST, 120);
-    scheduleGsapRefresh(ST, 500);
-    scheduleGsapRefresh(ST, 1200);
   }
 
   // Default to plain CSS sticky. Only switch to ScrollTrigger pinning if a
@@ -216,8 +209,9 @@
   // version wrongly pinned whenever gsap was present.) Decide at `load`, after
   // the host's DOMContentLoaded code has had a chance to create the smoother.
   function startEngine() {
-    var smoother = window.ScrollSmoother && window.ScrollSmoother.get && window.ScrollSmoother.get();
-    if (smoother && window.gsap && window.ScrollTrigger) {
+    // var smoother = window.ScrollSmoother && window.ScrollSmoother.get && window.ScrollSmoother.get()
+    var smoother = window.lenis || null;
+    if (smoother && window.ScrollTrigger) {
       smootherInstance = smoother;
       setupGsap(window.gsap, window.ScrollTrigger);
     } else {
@@ -235,7 +229,7 @@
 
   function currentSmoother() {
     if (smootherInstance) return smootherInstance;
-    var smoother = window.ScrollSmoother && window.ScrollSmoother.get && window.ScrollSmoother.get();
+    var smoother = window.lenis || null;
     if (smoother) smootherInstance = smoother;
     return smootherInstance;
   }
@@ -404,8 +398,9 @@
       sizeWrapper();
     }
     if (engineMode === "gsap" && window.ScrollTrigger) {
-      if (scrollTriggerInstance && scrollTriggerInstance.refresh) scrollTriggerInstance.refresh();
-      else window.ScrollTrigger.refresh();
+      if (scrollTriggerInstance && scrollTriggerInstance.refresh) {
+        scrollTriggerInstance.refresh();
+      } else window.ScrollTrigger.refresh();
     }
     if (engineMode === "gsap" && scrollTriggerApi) {
       scheduleGsapRefresh(scrollTriggerApi, 0);
@@ -416,12 +411,15 @@
     if (!ST) return;
     setTimeout(function () {
       afterFrames(2).then(function () {
-        if (smootherInstance && smootherInstance.refresh) smootherInstance.refresh();
-        else {
-          var smoother = window.ScrollSmoother && window.ScrollSmoother.get && window.ScrollSmoother.get();
-          if (smoother && smoother.refresh) smoother.refresh();
+        if (smootherInstance && smootherInstance.refresh) {
+          smootherInstance.refresh();
+        } else {
+          var smoother = window.lenis || null;
+          if (smoother && smoother.resize) smoother.resize();
         }
-        if (scrollTriggerInstance && scrollTriggerInstance.refresh) scrollTriggerInstance.refresh();
+        if (scrollTriggerInstance && scrollTriggerInstance.refresh) {
+          scrollTriggerInstance.refresh();
+        }
         ST.refresh(true);
       });
     }, delay || 0);
@@ -450,10 +448,10 @@
   function addLayoutListeners() {
     addEventListener("resize", scheduleLayoutRefresh);
     addEventListener("orientationchange", scheduleLayoutRefresh);
-    addEventListener("scroll", refreshGsapOnFirstScroll, { passive: true });
+    // addEventListener("scroll", refreshGsapOnFirstScroll, { passive: true })
     if (window.visualViewport && window.visualViewport.addEventListener) {
       window.visualViewport.addEventListener("resize", scheduleLayoutRefresh);
-      window.visualViewport.addEventListener("scroll", refreshGsapOnFirstScroll);
+      // window.visualViewport.addEventListener("scroll", refreshGsapOnFirstScroll)
     }
   }
 
